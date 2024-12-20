@@ -1,33 +1,37 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import exampleImg from './BEH-1.png'
-import Image from 'next/image'
-import Link from 'next/link'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Separator } from "@/components/ui/separator"
-import { AlertCircle, Upload, Eye, ArrowLeft, RefreshCw, Info } from 'lucide-react'
+import { useState } from 'react';
+import exampleImg from './BEH-1.png';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
+import { AlertCircle, Upload, Eye, ArrowLeft, RefreshCw, Info } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/components/ui/tooltip";
 
 import axios from 'axios';
 
-async function predictGlaucoma(imageFile) {
+const predictGlaucoma = async (imageFile) => {
   try {
     const formData = new FormData();
     formData.append('image', imageFile);
 
-    const response = await axios.post(process.env.NEXT_PUBLIC_ML_API_URL, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await axios.post(
+      process.env.NEXT_PUBLIC_ML_API_URL || 'http://localhost:8000/predict', // Fallback URL
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
 
     return {
       prediction: response.data.prediction,
@@ -38,54 +42,65 @@ async function predictGlaucoma(imageFile) {
     return {
       prediction: 'Error',
       confidence: '0',
+      error: error.response?.data?.error || 'An unknown error occurred.',
     };
   }
-}
+};
 
 export default function GlaucomaPredictionPage() {
-  const [selectedImage, setSelectedImage] = useState(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [predictionResult, setPredictionResult] = useState(null)
-  const [error, setError] = useState(null)
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [predictionResult, setPredictionResult] = useState(null);
+  const [error, setError] = useState(null);
 
   const handleImageChange = (e) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
       if (file.type.startsWith('image/')) {
-        setSelectedImage(URL.createObjectURL(file))
-        setError(null)
-        setPredictionResult(null)
+        setSelectedImage(URL.createObjectURL(file));
+        setError(null);
+        setPredictionResult(null);
       } else {
-        setError('Please select a valid image file.')
-        setSelectedImage(null)
+        setError('Please select a valid image file.');
+        setSelectedImage(null);
       }
     }
-  }
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!selectedImage) {
-      setError('Please select an image before submitting.')
-      return
+      setError('Please select an image before submitting.');
+      return;
     }
-    setIsSubmitting(true)
-    setError(null)
+
+    setIsSubmitting(true);
+    setError(null);
+
     try {
-      const imageFile = await fetch(selectedImage).then(r => r.blob()).then(blobFile => new File([blobFile], "image.jpg", { type: "image/jpeg" }))
-      const result = await predictGlaucoma(imageFile)
-      setPredictionResult(result)
+      const imageFile = await fetch(selectedImage)
+        .then((res) => res.blob())
+        .then((blob) => new File([blob], "image.jpg", { type: "image/jpeg" }));
+
+      const result = await predictGlaucoma(imageFile);
+
+      if (result.prediction === 'Error') {
+        throw new Error(result.error || 'Prediction failed.');
+      }
+
+      setPredictionResult(result);
     } catch (err) {
-      setError('An error occurred during prediction. Please try again.')
+      setError(err.message || 'An error occurred during prediction. Please try again.');
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const resetPrediction = () => {
-    setSelectedImage(null)
-    setPredictionResult(null)
-    setError(null)
-  }
+    setSelectedImage(null);
+    setPredictionResult(null);
+    setError(null);
+  };
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-8">
@@ -102,6 +117,7 @@ export default function GlaucomaPredictionPage() {
           <CardContent>
             {!predictionResult ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Example Image Section */}
                 <div className="space-y-4">
                   <h3 className="text-xl font-semibold">Example Eye Image</h3>
                   <div className="relative">
@@ -129,6 +145,8 @@ export default function GlaucomaPredictionPage() {
                     This image shows a clear view of the retina, which is essential for accurate glaucoma risk assessment.
                   </p>
                 </div>
+
+                {/* Upload Section */}
                 <div className="space-y-6">
                   <h3 className="text-xl font-semibold">Upload Your Eye Image</h3>
                   <form onSubmit={handleSubmit} className="space-y-6">
@@ -155,19 +173,20 @@ export default function GlaucomaPredictionPage() {
               </div>
             ) : (
               <div className="space-y-8">
+                {/* Prediction Result Section */}
                 <div className="flex flex-col md:flex-row gap-8 items-center">
                   <div className="w-full md:w-1/2">
                     <Image src={selectedImage} alt="Analyzed eye image" width={500} height={375} className="rounded-lg shadow-md w-full" />
                   </div>
                   <div className="w-full md:w-1/2 space-y-4">
                     <h3 className="text-2xl font-semibold">Analysis Result</h3>
-                    <Alert variant={predictionResult.prediction.includes('High risk') ? 'destructive' : 'default'}>
+                    <Alert variant={predictionResult.prediction.includes('Glaucoma Present') ? 'destructive' : 'default'}>
                       <AlertCircle className="h-4 w-4" />
                       <AlertTitle>{predictionResult.prediction}</AlertTitle>
                       <AlertDescription>Confidence: {predictionResult.confidence}%</AlertDescription>
                     </Alert>
                     <p className="text-gray-600 dark:text-gray-400">
-                      {predictionResult.prediction.includes('High risk')
+                      {predictionResult.prediction.includes('Glaucoma Present')
                         ? "The analysis suggests a higher risk of glaucoma. It's recommended to consult an eye care professional for a comprehensive examination."
                         : "The analysis suggests a lower risk of glaucoma. However, regular eye check-ups are still important for maintaining eye health."}
                     </p>
@@ -194,6 +213,5 @@ export default function GlaucomaPredictionPage() {
         </Card>
       </div>
     </main>
-  )
+  );
 }
-
