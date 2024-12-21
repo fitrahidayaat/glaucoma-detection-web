@@ -35,13 +35,13 @@ const predictGlaucoma = async (imageFile) => {
 
     return {
       prediction: response.data.prediction,
-      confidence: response.data.confidence,
+      threshold: response.data.threshold,
     };
   } catch (error) {
     console.error('Error predicting glaucoma:', error);
     return {
       prediction: 'Error',
-      confidence: '0',
+      threshold: '0',
       error: error.response?.data?.error || 'An unknown error occurred.',
     };
   }
@@ -183,7 +183,7 @@ export default function GlaucomaPredictionPage() {
                     <Alert variant={predictionResult.prediction.includes('Glaucoma Present') ? 'destructive' : 'default'}>
                       <AlertCircle className="h-4 w-4" />
                       <AlertTitle>{predictionResult.prediction}</AlertTitle>
-                      <AlertDescription>Confidence: {predictionResult.confidence}%</AlertDescription>
+                      <AlertDescription>Threshold: {predictionResult.threshold}</AlertDescription>
                     </Alert>
                     <p className="text-gray-600 dark:text-gray-400">
                       {predictionResult.prediction.includes('Glaucoma Present')
